@@ -36,6 +36,7 @@ public class RecorderResource {
     private static final List<BrowserAction> actions = new ArrayList<>();
     private static final List<Locator> locators = new ArrayList<>();
     private static String baseUrl = "https://example.com";  // default
+    private WebDriver driver = null;
 
     public WebDriver createChromeDriverWithCorsDisabled() {
         WebDriverManager.chromedriver().setup();
@@ -59,7 +60,7 @@ public class RecorderResource {
         actions.clear();   // Reset previous session
         locators.clear();
 
-        WebDriver driver = createChromeDriverWithCorsDisabled();
+        driver = createChromeDriverWithCorsDisabled();
         try {
             driver.get(baseUrl);
 
@@ -172,6 +173,14 @@ public class RecorderResource {
     @POST
     @Path("/stop")
     public Response stopRecording() {
+        if (driver != null) {
+            try {
+                driver.quit();
+                driver = null;
+            } catch (Exception e) {
+                log.error("Error closing browser:", e);
+            }
+        }
         return Response.ok(new ArrayList<>(actions)).build();
     }
 
@@ -193,7 +202,7 @@ public class RecorderResource {
     @Path("/locators")
     public Response getLocators() {
         Set<String> seen = new HashSet<>();
-        List<Map<String, Object>> dedupedLocators = new ArrayList<>();
+        List<Map<String,     Object>> dedupedLocators = new ArrayList<>();
 
         for (Locator loc : locators) {
             if (loc.getName() == null || loc.getLookupDetails() == null) continue;
@@ -336,7 +345,9 @@ public class RecorderResource {
     @Path("/clean-feature")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response cleanFeature(FeatureCleanRequest request) {
+    public Response cleanFeature(@QueryParam("provider") @DefaultValue("ollama") String provider,
+                                 @QueryParam("model") @DefaultValue("codellama") String model,
+                                 FeatureCleanRequest request) {
         String rawFeatureText = request.getRawFeature();
         String cleaned = rawFeatureText
                 .replaceAll("(?m)^\\s+", "")
@@ -344,28 +355,59 @@ public class RecorderResource {
                 .trim();
 
         try {
-            HttpClient client = HttpClient.newHttpClient();
             String prompt = "Clean up and improve this Cucumber feature file:\n" + cleaned;
-            OllamaRequest ollamaRequest = new OllamaRequest("codellama", prompt, false);
 
+            HttpClient client = HttpClient.newHttpClient();
             ObjectMapper mapper = new ObjectMapper();
-            String requestBody = mapper.writeValueAsString(ollamaRequest);
+            String requestBody = "";
 
-            log.info("Sending request to Ollama:\n{}", requestBody);
+            HttpRequest httpRequest;
 
-            HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:11434/api/generate"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
+            switch (provider.toLowerCase()) {
+                case "ollama":
+                    OllamaRequest ollamaRequest = new OllamaRequest(model, prompt, false);
+                    requestBody = mapper.writeValueAsString(ollamaRequest);
+                    httpRequest = HttpRequest.newBuilder()
+                            .uri(URI.create("http://localhost:11434/api/generate"))
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                            .build();
+                    break;
+
+                case "openai":
+                    // Hypothetical OpenAI call (you need to provide your key and endpoint)
+                    Map<String, Object> openaiRequest = new HashMap<>();
+                    openaiRequest.put("model", model);
+                    openaiRequest.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+                    requestBody = mapper.writeValueAsString(openaiRequest);
+                    httpRequest = HttpRequest.newBuilder()
+                            .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                            .header("Authorization", "Bearer YOUR_OPENAI_API_KEY")
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                            .build();
+                    break;
+
+                default:
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Unsupported AI provider: " + provider).build();
+            }
 
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             JsonNode jsonNode = mapper.readTree(response.body());
-            String cleanedFeature = jsonNode.get("response").asText().trim();
+
+            // Extract AI response
+            String cleanedFeature = switch (provider.toLowerCase()) {
+                case "ollama" -> jsonNode.get("response").asText().trim();
+                case "openai" -> jsonNode.get("choices").get(0).get("message").get("content").asText().trim();
+                default -> "";
+            };
+
             return Response.ok(cleanedFeature).build();
 
         } catch (Exception e) {
-            return Response.serverError().entity("Failed to connect to Ollama: " + e.getMessage()).build();
+            return Response.serverError().entity("Failed to connect to AI model: " + e.getMessage()).build();
         }
     }
+
 }

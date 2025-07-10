@@ -35,7 +35,7 @@ function App() {
     const response = await fetch('/record/feature', { method: 'POST' });
     const rawText = await response.text();
 
-    const cleanResponse = await fetch('/record/clean-feature', {
+    const cleanResponse = await fetch('/record/clean-feature?provider=ollama&model=codellama', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rawFeature: rawText }),
