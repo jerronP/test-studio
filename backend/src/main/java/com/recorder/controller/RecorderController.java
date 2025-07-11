@@ -4,6 +4,7 @@ import com.recorder.model.BrowserAction;
 import com.recorder.model.Locator;
 import com.recorder.service.LocatorService;
 import com.recorder.service.RecordingService;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -15,8 +16,12 @@ import java.util.Map;
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecorderController {
 
-    private final RecordingService recordingService = new RecordingService();
-    private final LocatorService locatorService = new LocatorService();
+
+    @Inject
+    RecordingService recordingService;
+
+    @Inject
+    LocatorService locatorService;
 
     @POST
     @Path("/start")

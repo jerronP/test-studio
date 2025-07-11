@@ -2,6 +2,7 @@ package com.recorder.controller;
 
 import com.recorder.model.FeatureCleanRequest;
 import com.recorder.service.FeatureService;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -14,7 +15,8 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class FeatureController {
 
-    private final FeatureService featureService = new FeatureService();
+    @Inject
+    FeatureService featureService;
 
     @POST
     @Path("/feature")

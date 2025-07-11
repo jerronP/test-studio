@@ -2,10 +2,12 @@ package com.recorder.service;
 
 import com.recorder.model.BrowserAction;
 import com.recorder.model.Locator;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 
 import java.util.*;
 
+@ApplicationScoped
 public class LocatorService {
 
     private static final List<Locator> LOCATORS = new ArrayList<>();

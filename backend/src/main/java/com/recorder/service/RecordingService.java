@@ -4,6 +4,7 @@ import com.recorder.config.AppConfig;
 import com.recorder.driver.WebDriverFactory;
 import com.recorder.model.BrowserAction;
 import com.recorder.util.RecorderScriptUtil;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
+@ApplicationScoped
 public class RecordingService {
 
     private static final List<BrowserAction> actions = new ArrayList<>();
