@@ -34,9 +34,15 @@ public class FeatureService {
     @Inject
     AIClient aiClient;
 
+    @Inject
+    LocatorService locatorService;
+
+    @Inject
+    RecordingService recordingService;
+
     public Response generateFeature() {
-        List<BrowserAction> actions = RecordingService.getActions();
-        List<Locator> locators = LocatorService.getRawLocators();
+        List<BrowserAction> actions = recordingService.getActions();
+        List<Locator> locators = locatorService.getRawLocators();
         String feature = FeatureUtils.createFeatureFromActions(actions,locators);
 
         try (FileWriter writer = new FileWriter("recorded.feature")) {

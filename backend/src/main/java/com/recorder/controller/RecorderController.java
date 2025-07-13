@@ -58,7 +58,7 @@ public class RecorderController {
     @GET
     @Path("/locators")
     public Response getLocators() {
-        return Response.ok(LocatorService.getRawLocators()).build();
+        return Response.ok(locatorService.getRawLocators()).build();
     }
 
     @POST

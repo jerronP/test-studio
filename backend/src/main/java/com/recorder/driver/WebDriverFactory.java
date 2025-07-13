@@ -12,7 +12,16 @@ public class WebDriverFactory {
         if (driver == null) {
             WebDriverManager.chromedriver().setup();
             ChromeOptions options = new ChromeOptions();
-            options.addArguments("--disable-web-security", "--allow-running-insecure-content", "--user-data-dir=/tmp/profile");
+            
+            options.addArguments("--disable-web-security");
+            options.addArguments("--allow-running-insecure-content");
+            String userDataDir = System.getProperty("java.io.tmpdir") + "/selenium-profile";
+            options.addArguments("--user-data-dir=" + userDataDir);
+            options.addArguments("--disable-gpu");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--start-maximized"); // so the UI renders fully
+            System.setProperty("webdriver.chrome.verboseLogging", "true");
+
             driver = new ChromeDriver(options);
         }
         return driver;

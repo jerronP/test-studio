@@ -55,18 +55,40 @@ public class RecorderScriptUtil {
               if (sibling.nodeType === 1 && sibling.tagName === el.tagName) ix++;
             }
           }
+          
+         function getAllAttributes(el) {
+            const attrs = {};
+            if (!el.attributes) return attrs;
+            for (let attr of el.attributes) {
+              const name = attr.name;
+              const value = attr.value;
+    
+              // Skip  generic low-value attributes
+              if (
+                name.startsWith('_ngcontent') ||
+                name.startsWith('_nghost') ||
+                name === 'loading'
+              ) {
+                continue;
+              }
+    
+              attrs[name] = value;
+            }
+            return attrs;
+          }
 
           function send(action, el, value = '') {
             const locator = getBestLocator(el);
             const payload = {
-              action: action,
-              selector: locator.value,
-              value: value,
-              tag: el.tagName,
-              text: el.innerText || '',
-              name: el.getAttribute("name") || el.getAttribute("aria-label") || el.getAttribute("placeholder") || '',
-              findBy: locator.findBy
-            };
+                action: action,
+                selector: locator.value,
+                value: value,
+                tag: el.tagName,
+                text: el.innerText || '',
+                name: el.getAttribute("name") || el.getAttribute("aria-label") || el.getAttribute("placeholder") || '',
+                findBy: locator.findBy,
+                attributes: getAllAttributes(el)  // ⬅️ new line
+              };
 
             fetch('http://localhost:8080/record/log', {
               method: 'POST',

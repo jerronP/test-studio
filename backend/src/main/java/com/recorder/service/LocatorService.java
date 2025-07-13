@@ -20,8 +20,14 @@ public class LocatorService {
         LOCATORS.clear();
     }
 
-    public static List<Locator> getRawLocators() {
+    public List<Locator> getRawLocators() {
         return new ArrayList<>(LOCATORS);
+    }
+
+    public static void removeLocator(String selectorToRemove) {
+        LOCATORS.removeIf(locator ->
+                locator.getLookupDetails().getValue().equals(selectorToRemove)
+        );
     }
 
     public static List<Locator> getDeduplicatedLocatorsFromActions(List<BrowserAction> actions) {
@@ -38,9 +44,7 @@ public class LocatorService {
             if (seen.add(key)) {
                 Locator locator = new Locator();
                 locator.setName(name);
-                Locator.LookupDetails details = new Locator.LookupDetails();
-                details.setFindBy("cssSelector");
-                details.setValue(selector);
+                Locator.LookupDetails details = new Locator.LookupDetails("cssSelector", selector);
                 locator.setLookupDetails(details);
                 result.add(locator);
             }
