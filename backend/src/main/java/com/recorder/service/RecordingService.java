@@ -47,13 +47,41 @@ public class RecordingService {
         recordedUrl = url != null ? url : AppConfig.BASE_URL;
         try {
             driver.get(recordedUrl);
-            ((JavascriptExecutor) driver).executeScript(RecorderScriptUtil.getRecorderScript());
-            log.info("Recorder script injected.");
+            injectRecorderScript(driver);  // first injection
+
+            // Start a thread that keeps checking for page load state and reinjects script
+            new Thread(() -> {
+                String lastUrl = driver.getCurrentUrl();
+                while (true) {
+                    try {
+                        String currentUrl = driver.getCurrentUrl();
+                        if (!currentUrl.equals(lastUrl)) {
+                            log.info("Page navigation detected: {}", currentUrl);
+                            lastUrl = currentUrl;
+                            Thread.sleep(1500);  // small delay to let page stabilize
+                            injectRecorderScript(driver); // reinject script
+                        }
+                        Thread.sleep(500); // polling interval
+                    } catch (Exception e) {
+                        log.warn("Navigation watcher stopped: {}", e.getMessage());
+                        break;
+                    }
+                }
+            }).start();
             return Response.ok("Recording started at: " + url).build();
         } catch (Exception e) {
             log.error("Error injecting script or navigating", e);
             WebDriverFactory.quitDriver();
             return Response.serverError().entity("Recording error: " + e.getMessage()).build();
+        }
+    }
+
+    private void injectRecorderScript(WebDriver driver) {
+        try {
+            ((JavascriptExecutor) driver).executeScript(RecorderScriptUtil.getRecorderScript());
+            log.info("Recorder script injected.");
+        } catch (Exception e) {
+            log.warn("Script injection failed: {}", e.getMessage());
         }
     }
 
@@ -171,6 +199,11 @@ public class RecordingService {
 
     public Response stop() {
         WebDriverFactory.quitDriver();
+        log.info("Recorded actions count: {}", actions.size() );
+        log.info("Recording stopped. Recorded actions:");
+        for (BrowserAction action : actions) {
+            log.info("Action: {}", action);
+        }
         return Response.ok(new ArrayList<>(actions)).build();
     }
 
