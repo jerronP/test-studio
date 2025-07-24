@@ -174,17 +174,27 @@ public class RecorderScriptUtil {
             return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
           }
 
-          function extractContext(el) {
-            const parent = el.closest('form, div, section, main, article, body');
-            return parent ? parent.outerHTML : el.outerHTML;
+          function extractRelevantElements() {
+            const selectors = ['input', 'textarea', 'button', 'select', 'a', '[role=button]'];
+            const elements = Array.from(document.querySelectorAll(selectors.join(',')));
+            const seen = new Set();
+
+            return elements
+              .filter(isVisible)
+              .map(el => {
+                const html = el.outerHTML.trim().replace(/\\s+/g, ' ');
+                if (!seen.has(html)) {
+                  seen.add(html);
+                  return html;
+                }
+                return null;
+              })
+              .filter(Boolean)
+              .slice(0, 100) // limit to first 100 elements
+              .join('\\n');
           }
 
-          const tags = ['input', 'textarea', 'button', 'a', 'select', 'label'];
-          const elements = Array.from(document.querySelectorAll(tags.join(',')))
-            .filter(isVisible)
-            .map(el => extractContext(el));
-
-          return [...new Set(elements)].join('\n<!-- element split -->\n');
+          return extractRelevantElements();
         })();
         """;
     }
