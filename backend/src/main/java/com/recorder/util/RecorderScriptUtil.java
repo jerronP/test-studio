@@ -166,5 +166,28 @@ public class RecorderScriptUtil {
         """;
     }
 
+    public static String getOptimizedDomExtractionScript() {
+        return """
+        (() => {
+          function isVisible(el) {
+            const style = window.getComputedStyle(el);
+            return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+          }
+
+          function extractContext(el) {
+            const parent = el.closest('form, div, section, main, article, body');
+            return parent ? parent.outerHTML : el.outerHTML;
+          }
+
+          const tags = ['input', 'textarea', 'button', 'a', 'select', 'label'];
+          const elements = Array.from(document.querySelectorAll(tags.join(',')))
+            .filter(isVisible)
+            .map(el => extractContext(el));
+
+          return [...new Set(elements)].join('\n<!-- element split -->\n');
+        })();
+        """;
+    }
+
 
 }
