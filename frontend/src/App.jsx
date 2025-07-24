@@ -1,6 +1,7 @@
 // frontend/src/App.js
 import React, { useState } from 'react';
 import './App.css';
+import AIAgentForm from './AIAgentForm';
 
 function App() {
   const [recording, setRecording] = useState(false);
@@ -129,6 +130,7 @@ function App() {
               <button onClick={exportLocators} style={{ marginTop: '1rem' }}>Download locators.json</button>
             </div>
         )}
+        <AIAgentForm />
       </div>
   );
 }

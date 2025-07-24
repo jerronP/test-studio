@@ -5,6 +5,9 @@ public class RecorderScriptUtil {
     public static String getRecorderScript() {
         return """
         (function() {
+          if (window.__recorderInjected) return;
+          window.__recorderInjected = true;
+
           function getBestLocator(el) {
             if (el.id && document.querySelectorAll('#' + el.id).length === 1) {
               return { findBy: 'id', value: el.id };
@@ -13,17 +16,15 @@ public class RecorderScriptUtil {
               return { findBy: 'name', value: el.name };
             }
             try {
-              const cssPath = getCssPath(el);
-              if (document.querySelectorAll(cssPath).length === 1) {
-                return { findBy: 'cssSelector', value: cssPath };
+              const css = getCssPath(el);
+              if (document.querySelectorAll(css).length === 1) {
+                return { findBy: 'cssSelector', value: css };
               }
-            } catch (_) {}
-
+            } catch (e) {}
             return { findBy: 'xpath', value: getXPath(el) };
           }
 
           function getCssPath(el) {
-            if (!(el instanceof Element)) return;
             const path = [];
             while (el.nodeType === Node.ELEMENT_NODE) {
               let selector = el.nodeName.toLowerCase();
@@ -55,23 +56,20 @@ public class RecorderScriptUtil {
               if (sibling.nodeType === 1 && sibling.tagName === el.tagName) ix++;
             }
           }
-          
-         function getAllAttributes(el) {
+
+          function getAllAttributes(el) {
             const attrs = {};
             if (!el.attributes) return attrs;
             for (let attr of el.attributes) {
               const name = attr.name;
               const value = attr.value;
-    
-              // Skip  generic low-value attributes
               if (
                 name.startsWith('_ngcontent') ||
                 name.startsWith('_nghost') ||
-                name === 'loading'
-              ) {
-                continue;
-              }
-    
+                name === 'loading' ||
+                name === 'style' ||
+                name === 'onclick'
+              ) continue;
               attrs[name] = value;
             }
             return attrs;
@@ -80,15 +78,15 @@ public class RecorderScriptUtil {
           function send(action, el, value = '') {
             const locator = getBestLocator(el);
             const payload = {
-                action: action,
-                selector: locator.value,
-                value: value,
-                tag: el.tagName,
-                text: el.innerText || '',
-                name: el.getAttribute("name") || el.getAttribute("aria-label") || el.getAttribute("placeholder") || '',
-                findBy: locator.findBy,
-                attributes: getAllAttributes(el)  // ⬅️ new line
-              };
+              action: action,
+              selector: locator.value,
+              value: value,
+              tag: el.tagName,
+              text: el.innerText || '',
+              name: el.getAttribute("name") || el.getAttribute("aria-label") || el.getAttribute("placeholder") || '',
+              findBy: locator.findBy,
+              attributes: getAllAttributes(el)
+            };
 
             fetch('http://localhost:8080/record/log', {
               method: 'POST',
@@ -111,20 +109,62 @@ public class RecorderScriptUtil {
             }
           }
 
-          document.addEventListener('click', function(e) {
-            if (e.shiftKey) {
-              send('highlight', e.target); 
-            } else {
-              send('click', e.target);
+          function initializeRecorder() {
+            document.addEventListener('click', function(e) {
+              if (e.shiftKey) {
+                send('highlight', e.target);
+              } else {
+                send('click', e.target);
+              }
+            });
+
+            document.addEventListener('change', function(e) {
+              send('input', e.target, e.target.value);
+            });
+
+            console.log('📡 Recorder initialized');
+          }
+
+          // Hook into history API
+          const origPush = history.pushState;
+          const origReplace = history.replaceState;
+
+          history.pushState = function() {
+            origPush.apply(this, arguments);
+            reinject();
+          };
+          history.replaceState = function() {
+            origReplace.apply(this, arguments);
+            reinject();
+          };
+          window.addEventListener('popstate', reinject);
+
+          // DOM observer for detecting route/component changes
+          const observer = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+              if (m.addedNodes.length > 0) {
+                console.log('📦 DOM change detected. Reapplying recorder...');
+                reinject();
+                break;
+              }
             }
           });
 
-          document.addEventListener('change', function(e) {
-            send('input', e.target, e.target.value);
-          });
+          observer.observe(document.body, { childList: true, subtree: true });
 
-          console.log('📡 Recorder injected and running...');
+          let reinjectionTimer;
+          function reinject() {
+            clearTimeout(reinjectionTimer);
+            reinjectionTimer = setTimeout(() => {
+              initializeRecorder();
+            }, 500);
+          }
+
+          // Run once
+          initializeRecorder();
         })();
         """;
     }
+
+
 }

@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/record': 'http://localhost:8080',  // Your Quarkus backend address
+      '/record': 'http://localhost:8080',
+      '/ai-agent': 'http://localhost:8080',// Your Quarkus backend address
     }
   }
 })
