@@ -168,36 +168,61 @@ public class RecorderScriptUtil {
 
     public static String getOptimizedDomExtractionScript() {
         return """
-        (() => {
-          function isVisible(el) {
-            const style = window.getComputedStyle(el);
-            return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-          }
+    return (function() {
+        try {
+            function isVisible(el) {
+                if (!el) return false;
+                const style = window.getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                return (
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    el.offsetParent !== null
+                );
+            }
 
-          function extractRelevantElements() {
-            const selectors = ['input', 'textarea', 'button', 'select', 'a', '[role=button]'];
+            const selectors = [
+                'input',
+                'textarea',
+                'button',
+                'select',
+                'a[href]',
+                '[role=button]',
+                'label',
+                'form',
+                '[onclick]',
+                '[type=submit]'
+            ];
+
             const elements = Array.from(document.querySelectorAll(selectors.join(',')));
             const seen = new Set();
+            const result = [];
 
-            return elements
-              .filter(isVisible)
-              .map(el => {
-                const html = el.outerHTML.trim().replace(/\\s+/g, ' ');
-                if (!seen.has(html)) {
-                  seen.add(html);
-                  return html;
+            for (const el of elements) {
+                if (isVisible(el)) {
+                    let html = el.outerHTML.trim().replace(/\\s+/g, ' ');
+                    if (!seen.has(html)) {
+                        seen.add(html);
+                        result.push(html);
+                    }
                 }
-                return null;
-              })
-              .filter(Boolean)
-              .slice(0, 100) // limit to first 100 elements
-              .join('\\n');
-          }
+            }
 
-          return extractRelevantElements();
-        })();
-        """;
+            if (result.length === 0) {
+                return "NO_VISIBLE_ELEMENTS_FOUND";
+            }
+
+            return result.slice(0, 100).join('\\n');
+
+        } catch (err) {
+            return "SCRIPT_ERROR: " + err.message;
+        }
+    })();
+    """;
     }
+
 
 
 }
