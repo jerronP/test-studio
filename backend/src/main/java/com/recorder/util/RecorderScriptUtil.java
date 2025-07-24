@@ -184,6 +184,7 @@ public class RecorderScriptUtil {
             }
 
             const selectors = [
+                'form',
                 'input',
                 'textarea',
                 'button',
@@ -191,29 +192,37 @@ public class RecorderScriptUtil {
                 'a[href]',
                 '[role=button]',
                 'label',
-                'form',
                 '[onclick]',
                 '[type=submit]'
             ];
 
             const elements = Array.from(document.querySelectorAll(selectors.join(',')));
             const seen = new Set();
-            const result = [];
+            const included = [];
 
             for (const el of elements) {
-                if (isVisible(el)) {
-                    let html = el.outerHTML.trim().replace(/\\s+/g, ' ');
-                    if (!seen.has(html)) {
-                        seen.add(html);
-                        result.push(html);
+                if (!isVisible(el)) continue;
+
+                // Check if one of its ancestors is already included
+                let skip = false;
+                for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+                    if (included.includes(parent)) {
+                        skip = true;
+                        break;
                     }
+                }
+
+                if (skip) continue;
+
+                let html = el.outerHTML.trim().replace(/\\s+/g, ' ');
+                if (!seen.has(html)) {
+                    seen.add(html);
+                    included.push(el);
                 }
             }
 
-            if (result.length === 0) {
-                return "NO_VISIBLE_ELEMENTS_FOUND";
-            }
-
+            const result = included.map(el => el.outerHTML.trim().replace(/\\s+/g, ' '));
+            if (result.length === 0) return "NO_VISIBLE_ELEMENTS_FOUND";
             return result.slice(0, 100).join('\\n');
 
         } catch (err) {
